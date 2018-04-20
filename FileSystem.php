@@ -14,7 +14,6 @@ namespace Iriven\Plugins\Filesystem;
  */
 class FileSystem
 {
-    
     /**
      * Appends content to an existing file.
      *
