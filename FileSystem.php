@@ -6,7 +6,7 @@
  * Time: 11:29
  */
 
-namespace Iriven\Plugins\FileSystem;
+namespace Iriven\Plugins\Filesystem;
 
 /**
  * Class FileSystem
