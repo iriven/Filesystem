@@ -14,6 +14,7 @@ namespace Iriven\Plugins\Filesystem;
  */
 class FileSystem
 {
+    
     /**
      * Appends content to an existing file.
      *
@@ -22,9 +23,9 @@ class FileSystem
      * @param null $context
      * @return bool
      */
-    public static function append($file, $content, $context = null)
+    public static function appendToFile($file, $content, $context = null)
     {
-        return self::write($file,$content,FILE_APPEND | LOCK_EX, $context);
+        return self::writeFile($file,$content,FILE_APPEND | LOCK_EX, $context);
     }
 
     /**
@@ -411,7 +412,32 @@ class FileSystem
         return file_exists($file) || is_link($file);
     }
 
-
+    /**
+     * Extract the file name from a file path.
+     *
+     * @param  string  $path
+     * @return string
+     */
+    public static function filename($path)
+    {
+        $path = self::pathname($path);
+        $output = null;
+        try
+        {
+            if(!self::exists($path))
+                throw new \RuntimeException(sprintf(
+                    'File or directory "%s" does not exist.',
+                    $path
+                ));
+            $output = pathinfo($path, PATHINFO_FILENAME);
+        }
+        catch (\RuntimeException $runtimeException)
+        {
+            error_log('FileSystem::name : '.$runtimeException->getMessage());
+            trigger_error($runtimeException->getMessage(),E_USER_ERROR);
+        }
+        return $output;
+    }
 
     /**
      * Gets file permissions
@@ -440,9 +466,10 @@ class FileSystem
      * Returns a file or directory human readable size
      *
      * @param $path
-     * @return bool|string
+     * @param bool $humanReadable
+     * @return bool|float|int|mixed|string
      */
-    public static function getSize($path)
+    public static function getSize($path, $humanReadable = true)
     {
         $path = self::pathname($path);
         $size = false;
@@ -462,7 +489,9 @@ class FileSystem
             error_log('FileSystem::getSize : '.$runtimeException->getMessage());
             trigger_error($runtimeException->getMessage(),E_USER_ERROR);
         }
-        return $size? self::convertBytes($size) : $size;
+        if($size ===false)
+            return $size;
+        return $humanReadable? self::convertBytes($size) : $size;
     }
     /**
      *
@@ -519,6 +548,35 @@ class FileSystem
             trigger_error($runtimeException->getMessage(),E_USER_ERROR);
         }
     }
+    /**
+     * Insert arbitrary text into any place inside a text file
+    03
+     *
+    04
+     * @param string $file - absolute path to the file
+    05
+     * @param string $marker - a marker inside the file to
+    06
+     *   look for as a pattern match
+    07
+     * @param string $data - text to be inserted
+    08
+     * @param boolean $after - whether to insert text after (true)
+    09
+     *   or before (false) the marker. By default, the text is
+    10
+     *   inserted after the marker.
+    11
+     * @return integer - the number of bytes written to the file
+    12
+     */
+    public static function insertIntoFile($file, $marker, $data, $after = true)
+    {
+        $file = self::pathname($file);
+	    $contents = self::readFile($file);
+	    $new_contents = preg_replace('#'.$marker.'#i',($after) ? '$0' . $data : $data . '$0', $contents);
+	    return self::writeFile($file, $new_contents);
+	}
     /**
      * @param $directory
      * @return bool
@@ -670,31 +728,18 @@ class FileSystem
         }
         return $output;
     }
+
     /**
-     * Extract the file name from a file path.
+     * Alias of rename method
      *
-     * @param  string  $path
-     * @return string
+     * @param $source
+     * @param $destination
+     * @param bool $overwrite
+     * @return bool
      */
-    public static function filename($path)
+    public static function move($source, $destination, $overwrite = false)
     {
-        $path = self::pathname($path);
-        $output = null;
-        try
-        {
-            if(!self::exists($path))
-                throw new \RuntimeException(sprintf(
-                    'File or directory "%s" does not exist.',
-                    $path
-                ));
-            $output = pathinfo($path, PATHINFO_FILENAME);
-        }
-        catch (\RuntimeException $runtimeException)
-        {
-            error_log('FileSystem::name : '.$runtimeException->getMessage());
-            trigger_error($runtimeException->getMessage(),E_USER_ERROR);
-        }
-        return $output;
+        return self::rename($source, $destination, $overwrite);
     }
 
     /**
@@ -713,6 +758,7 @@ class FileSystem
         $ownerarray = posix_getpwuid($owneruid);
         return $ownerarray['name'];
     }
+
     /**
      * return a normalized form of a given path
      *
@@ -749,6 +795,7 @@ class FileSystem
         }
         return $path;
     }
+
     /**
      * Prepend to a file.
      *
@@ -756,13 +803,14 @@ class FileSystem
      * @param  string  $content
      * @return int
      */
-    public static function prepend($path, $content)
+    public static function prependToFile($path, $content)
     {
         $path = self::pathname($path);
         if (self::exists($path))
-            return self::write($path, $content.self::read($path));
-        return self::write($path, $content);
+            return self::writeFile($path, $content.self::readFile($path));
+        return self::writeFile($path, $content);
     }
+
     /**
      * Get the contents of a file
      *
@@ -770,7 +818,7 @@ class FileSystem
      * @param bool $lock
      * @return bool|null|string
      */
-    public static function read($path, $lock = false)
+    public static function readFile($path, $lock = false)
     {
         $path = self::pathname($path);
         $output = null;
@@ -899,7 +947,7 @@ class FileSystem
         try{
             if(!self::exists($file))
                 throw new \RuntimeException(sprintf('Unable to read "%s" file, maybe it does not exist or we don\'t have "read" permission on it.', $file));
-            $output = self::write($file, str_replace($search, $replace, self::read($file)));
+            $output = self::writeFile($file, str_replace($search, $replace, self::readFile($file)));
         }
         catch (\RuntimeException $runtimeException)
         {
@@ -1089,7 +1137,7 @@ class FileSystem
         {
             if ($time == 0) $time = time();
             if ($atime == 0) $atime = time();
-            if (!self::exists($file)) self::write($file,'');
+            if (!self::exists($file)) self::writeFile($file,'');
             if (!$touch = $time ? @touch($file, $time, $atime) : @touch($file))
                 throw new \RuntimeException(sprintf('Failed to touch "%s".', $file));
             $output = true;
@@ -1138,7 +1186,7 @@ class FileSystem
      * @param null $context
      * @return bool
      */
-    public static function write($file,$content, $flags = 0, $context = null)
+    public static function writeFile($file,$content, $flags = 0, $context = null)
     {
         $output = false;
         $file = self::pathname($file);
@@ -1172,4 +1220,5 @@ class FileSystem
         }
         return $output;
     }
+
 }
