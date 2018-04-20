@@ -5,7 +5,7 @@
 
 
 ## Class Methods
-
+```php
 * public static function appendToFile($file, $content, $context = null)
 * public static function basename($path)
 * public static function chgrp($file, $group, $recursive = false)
@@ -51,7 +51,7 @@
 * public static function touch($file, $time = null, $atime = null)
 * public static function type($path)
 * public static function writeFile($file,$content, $flags = 0, $context = null)
-
+```
 ## Authors
 
 * **Alfred TCHONDJO** - *Project Initiator* - [iriven France](https://www.facebook.com/Tchalf)
