@@ -102,3 +102,9 @@ If you use this library in your project please add a backlink to this page by th
 ```
 ## Issues Repport
 Repport issues [Here](https://github.com/iriven/Filesystem/issues)
+
+## Security
+If you discover any security related issues, please email info@frankdejonge.nl instead of using the issue tracker.
+
+## Enjoy
+Oh and if you've come down this far, you might as well follow me on [twitter](https://twitter.com/IrivenFrance).
