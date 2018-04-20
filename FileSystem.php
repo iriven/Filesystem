@@ -676,7 +676,7 @@ class FileSystem
      * @param  string  $path
      * @return string
      */
-    public static function name($path)
+    public static function filename($path)
     {
         $path = self::pathname($path);
         $output = null;
