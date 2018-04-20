@@ -3,6 +3,14 @@
 
 [Iriven Php Filesystem:](https://github.com/iriven/PhpLogger) A helper class for filesystem operations. This class uses PHP Iterators in order to dynamically and stably provide filesystem operation access
 
+## Goals
+
+* Have a generic API for handling common tasks across files and folders.
+* Have consistent output which you can rely on.
+* Integrate well with all PHP packages/frameworks.
+* Make it easy to test your filesystem interactions.
+* Support streams for big file handling.
+
 ## Overview
 
 The following methods are provided:
