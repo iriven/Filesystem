@@ -88,7 +88,7 @@ This project is licensed under the GNU General Public License V3 - see the [LICE
 
 ## Donation
 
-If this project help you reduce time to develop, you can give me a cup of coffee :)
+If this project help you reduce time to develop, please consider making a donation, even a small one! This application is free and intends to remain so, please support it if you can.
 
 [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=XDCFPNTKUC4TU)
 
