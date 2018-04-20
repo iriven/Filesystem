@@ -54,6 +54,20 @@ public static function type($path)
 public static function writeFile($file,$content, $flags = 0, $context = null)
 
 ```
+## Installation
+
+The class can be used standalone, however it's recommended to install via Composer:
+
+If using Composer, just do something like:
+```php
+use \Iriven\Plugins\Filesystem\FileSystem;
+include 'path/to/vendor/autoload.php';
+```
+Otherwise, simply include the class:
+```php
+use \Iriven\Plugins\Filesystem\FileSystem;
+include 'path/to/FileSystem.php';
+```
 ## Authors
 
 * **Alfred TCHONDJO** - *Project Initiator* - [iriven France](https://www.facebook.com/Tchalf)
