@@ -104,7 +104,7 @@ If you use this library in your project please add a backlink to this page by th
 Repport issues [Here](https://github.com/iriven/Filesystem/issues)
 
 ## Security
-If you discover any security related issues, please email iriven@yahoo.fr instead of using the issue tracker. All security vulnerabilities will be promptly addressed
+If you discover any security related issues, please email iriven@yahoo{dot}fr instead of using the issue tracker. All security vulnerabilities will be promptly addressed
 
 ## Enjoy
 Oh and if you've come down this far, you might as well follow me on [twitter](https://twitter.com/IrivenFrance).
