@@ -57,7 +57,9 @@ public static function writeFile($file,$content, $flags = 0, $context = null)
 ## Installation
 
 The class can be used standalone, however it's recommended to install via Composer:
-
+```php
+composer require iriven/Filesystem
+```
 If using Composer, just do something like:
 ```php
 use \Iriven\Plugins\Filesystem\FileSystem;
