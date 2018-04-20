@@ -3,7 +3,9 @@
 
 [Iriven Php Filesystem:](https://github.com/iriven/PhpLogger) A helper class for filesystem operations. This class uses PHP Iterators in order to dynamically and stably provide filesystem operation access
 
-## Class Methods
+## Overview
+
+The following methods are provided:
 ```php
 public static function appendToFile($file, $content, $context = null)
 public static function basename($path)
