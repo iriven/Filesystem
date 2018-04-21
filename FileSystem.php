@@ -549,25 +549,15 @@ class FileSystem
     }
     /**
      * Insert arbitrary text into any place inside a text file
-    03
      *
-    04
      * @param string $file - absolute path to the file
-    05
      * @param string $marker - a marker inside the file to
-    06
      *   look for as a pattern match
-    07
      * @param string $data - text to be inserted
-    08
      * @param boolean $after - whether to insert text after (true)
-    09
      *   or before (false) the marker. By default, the text is
-    10
      *   inserted after the marker.
-    11
      * @return integer - the number of bytes written to the file
-    12
      */
     public static function insertIntoFile($file, $marker, $data, $after = true)
     {
