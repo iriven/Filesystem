@@ -55,6 +55,58 @@ class FileSystem
     }
 
     /**
+     * Get checksum of file
+     *
+     * List of type attributes:
+     * md5 - md5 cheksum hash (alternative is md5sum unix command) (length 32bit)
+     * md5raw - md5 hash digest raw binary cheksum (length 16bit)
+     * md5raw128 - md5 raw 128bit hash
+     * sha1 - sha1 hash
+     * sha1raw - sha1 hash raw binary cheksum (length 20bit)
+     * crc32 - polynomial 32bit length
+     *
+     * @param string $file Filename
+     * @param string $type md5 Hash type
+     * @return boolean|string Returns result of hash by filename
+     * @throws \Exception
+     */
+    public static function checksum($file, $type = 'md5')
+    {
+        $file = self::pathname($file);
+        $output  = false;
+        try{
+            if (!file_exists($file))
+                throw new \RuntimeException(sprintf('A file with name "%s" does not exists', $file));
+            switch ($type)
+            {
+                case 'md5raw':
+                    $output  .= md5_file($file, true);
+                    break;
+                case 'md5raw128':
+                    $output  .= pack("H*",md5_file($file));
+                    break;
+                case 'sha1':
+                    $output  .= sha1_file($file);
+                    break;
+                case 'sha1raw':
+                    $output  .= sha1_file($file, true);
+                    break;
+                case 'crc32':
+                    $output  .= sprintf('%u', crc32(self::readFile($file)));
+                    break;
+                case 'md5':
+                    $output  .= md5_file($file);
+                    break;
+            }
+        }
+        catch (\RuntimeException $runtimeException)
+        {
+            error_log('FileSystem::checksum : '.$runtimeException->getMessage());
+            trigger_error($runtimeException->getMessage(),E_USER_ERROR);
+        }
+        return $output;
+    }
+    /**
      * Change the group of an array of files or directories.
      *
      * @param $file
@@ -117,6 +169,30 @@ class FileSystem
                     'File or directory "%s" does not exist.',
                     $file
                 ));
+            if (preg_match('/^[drwxsStT\-]*$/i', $mode))
+            {
+                $permissions = $mode;
+                $modeRes = 0;
+                if ($permissions[1] == 'r') $modeRes += 0400;
+                if ($permissions[2] == 'w') $modeRes += 0200;
+                if ($permissions[3] == 'x') $modeRes += 0100;
+                else if ($permissions[3] == 's') $modeRes += 04100;
+                else if ($permissions[3] == 'S') $modeRes += 04000;
+                if ($permissions[4] == 'r') $modeRes += 040;
+                if ($permissions[5] == 'w') $modeRes += 020;
+                if ($permissions[6] == 'x') $modeRes += 010;
+                else if ($permissions[6] == 's') $modeRes += 02010;
+                else if ($permissions[6] == 'S') $modeRes += 02000;
+                if ($permissions[7] == 'r') $modeRes += 04;
+                if ($permissions[8] == 'w') $modeRes += 02;
+                if ($permissions[9] == 'x') $modeRes += 01;
+                else if ($permissions[9] == 't') $modeRes += 01001;
+                else if ($permissions[9] == 'T') $modeRes += 01000;
+
+                $mode = sprintf('%d', $modeRes);
+            }
+            if (!is_numeric($mode))
+                throw new \RuntimeException(sprintf('Mode must be an octal or unix CHMOD defined value: "%s" given.', $mode));
             if (!@chmod($file, $mode & ~$umask))
                 throw new \RuntimeException(sprintf('Failed to chmod file "%s".', $file));
             $output  = true;
@@ -177,7 +253,7 @@ class FileSystem
         }
         catch (\RuntimeException $runtimeException)
         {
-            error_log('FileSystem::chmod : '.$runtimeException->getMessage());
+            error_log('FileSystem::chown : '.$runtimeException->getMessage());
             trigger_error($runtimeException->getMessage(),E_USER_ERROR);
         }
         return $output;
@@ -392,23 +468,23 @@ class FileSystem
     /**
      * Checks the existence of files or directories.
      *
-     * @param $file
+     * @param $path
      * @return bool
      */
-    public static function exists( $file )
+    public static function exists( $path )
     {
-        $file = self::pathname($file);
+        $path = self::pathname($path);
         try{
             $maxPathLength = PHP_MAXPATHLEN - 2;
-            if (strlen($file) > $maxPathLength)
-                throw new \RuntimeException(sprintf('Could not check if file "%s"exist because path length exceeds %d characters.', $file, $maxPathLength));
+            if (strlen($path) > $maxPathLength)
+                throw new \RuntimeException(sprintf('Could not check if file "%s"exist because path length exceeds %d characters.', $path, $maxPathLength));
         }
         catch (\RuntimeException $runtimeException)
         {
             error_log('FileSystem::exists : '.$runtimeException->getMessage());
             trigger_error($runtimeException->getMessage(),E_USER_ERROR);
         }
-        return file_exists($file) || is_link($file);
+        return file_exists($path) || is_link($path);
     }
 
     /**
@@ -442,16 +518,49 @@ class FileSystem
      * Gets file permissions
      *
      * @param string $path Path to the file.
-     * @return string Mode of the file (last 4 digits).
+     * @param bool $octal.
+     * @return string Mode of the file (last 4 digits or Unix format).
      */
-    public static function getPerms($path) {
+    public static function getPerms($path, $octal=true) {
         $path =  self::pathname($path);
         $output = false;
         try{
+            clearstatcache();
             if (!self::exists($path))
                 throw new \RuntimeException(sprintf('Origin file "%s" does not exists.', $path));
             $info = new \SplFileInfo($path);
-            $output = substr( decoct( $info->getPerms() ), -4 );
+            if($octal){
+                $output = substr( decoct( $info->getPerms() ), -4 );
+            }
+            else {
+                $perms = $info->getPerms();
+                if (($perms & 0xC000) == 0xC000)  $output = 's'; // Socket
+                elseif (($perms & 0xA000) == 0xA000) $output = 'l'; // Symbolic Link
+                elseif (($perms & 0x8000) == 0x8000)  $output = '-'; // Regular
+                elseif (($perms & 0x6000) == 0x6000) $output = 'b'; // Block special
+                elseif (($perms & 0x4000) == 0x4000) $output = 'd'; // Directory
+                elseif (($perms & 0x2000) == 0x2000) $output = 'c'; // Character special
+                elseif (($perms & 0x1000) == 0x1000) $output = 'p'; // FIFO pipe
+                else  $output = 'u'; // Unknown
+                // Owner
+                $output .= (($perms & 0x0100) ? 'r' : '-');
+                $output .= (($perms & 0x0080) ? 'w' : '-');
+                $output .= (($perms & 0x0040) ?
+                    (($perms & 0x0800) ? 's' : 'x' ) :
+                    (($perms & 0x0800) ? 'S' : '-'));
+                // Group
+                $output .= (($perms & 0x0020) ? 'r' : '-');
+                $output .= (($perms & 0x0010) ? 'w' : '-');
+                $output .= (($perms & 0x0008) ?
+                    (($perms & 0x0400) ? 's' : 'x' ) :
+                    (($perms & 0x0400) ? 'S' : '-'));
+                // World
+                $output .= (($perms & 0x0004) ? 'r' : '-');
+                $output .= (($perms & 0x0002) ? 'w' : '-');
+                $output .= (($perms & 0x0001) ?
+                    (($perms & 0x0200) ? 't' : 'x' ) :
+                    (($perms & 0x0200) ? 'T' : '-'));
+            }
         }
         catch (\RuntimeException $runtimeException)
         {
@@ -509,7 +618,7 @@ class FileSystem
                 if ( ! function_exists('posix_getgrgid') )
                     $group = $gid;
                 else
-                $group = posix_getgrgid($gid)['name'];
+                    $group = posix_getgrgid($gid)['name'];
             }
         }
         catch (\RuntimeException $runtimeException)
@@ -547,25 +656,23 @@ class FileSystem
             trigger_error($runtimeException->getMessage(),E_USER_ERROR);
         }
     }
+
     /**
      * Insert arbitrary text into any place inside a text file
      *
-     * @param string $file - absolute path to the file
-     * @param string $marker - a marker inside the file to
-     *   look for as a pattern match
-     * @param string $data - text to be inserted
-     * @param boolean $after - whether to insert text after (true)
-     *   or before (false) the marker. By default, the text is
-     *   inserted after the marker.
-     * @return integer - the number of bytes written to the file
+     * @param $file
+     * @param $marker
+     * @param $data
+     * @param bool $after
+     * @return bool
      */
     public static function insertIntoFile($file, $marker, $data, $after = true)
     {
         $file = self::pathname($file);
-	    $contents = self::readFile($file);
-	    $new_contents = preg_replace('#'.$marker.'#i',($after) ? '$0' . $data : $data . '$0', $contents);
-	    return self::writeFile($file, $new_contents);
-	}
+        $contents = self::readFile($file);
+        $new_contents = preg_replace('#'.$marker.'#i',($after) ? '$0' . $data : $data . '$0', $contents);
+        return self::writeFile($file, $new_contents);
+    }
     /**
      * @param $directory
      * @return bool
@@ -743,7 +850,7 @@ class FileSystem
         $owneruid = @fileowner($file);
         if ( ! $owneruid ) return false;
         if ( ! function_exists('posix_getpwuid') )
-           return $owneruid;
+            return $owneruid;
         $ownerarray = posix_getpwuid($owneruid);
         return $ownerarray['name'];
     }
@@ -822,7 +929,7 @@ class FileSystem
             else {
                 if($handle = fopen($path, 'rb'))
                 {
-                if (flock($handle, LOCK_SH))
+                    if (flock($handle, LOCK_SH))
                     {
                         clearstatcache(true, $path);
                         $output = fread($handle, filesize($path) ?: 1);
@@ -929,7 +1036,7 @@ class FileSystem
      * @param $replace
      * @return bool
      */
-    public static function replace($file, $search, $replace)
+    public static function replaceInFile($file, $search, $replace)
     {
         $file = self::pathname($file);
         $output = false;
@@ -1124,8 +1231,8 @@ class FileSystem
         $output = false;
         try
         {
-            if ($time == 0) $time = time();
-            if ($atime == 0) $atime = time();
+            if ($time == null) $time = time();
+            if ($atime == null) $atime = time();
             if (!self::exists($file)) self::writeFile($file,'');
             if (!$touch = $time ? @touch($file, $time, $atime) : @touch($file))
                 throw new \RuntimeException(sprintf('Failed to touch "%s".', $file));
@@ -1138,7 +1245,34 @@ class FileSystem
         }
         return $output;
     }
-
+    /**
+     * Get tree structure of file
+     *
+     * Iterate a folder with arrays data as nested-tree
+     *
+     * @param string $directory A directory filepath
+     * @param int $depth A directory filepath
+     * @return array Returns as array iterator of directory
+     */
+    public static function tree($directory, $depth = 0)
+    {
+        $iterator = new \IteratorIterator(new \DirectoryIterator($directory));
+        $r = [];
+        foreach ($iterator as $splFileInfo)
+        {
+            if ($splFileInfo->isDot())
+                continue;
+            $info = ['file' => $splFileInfo->getFilename()];
+            if ($splFileInfo->isDir())
+            {
+                $nodes = self::tree($splFileInfo->getPathname(), $depth + 1);
+                if (!empty($nodes))
+                    $info['folder'] = $nodes;
+            }
+            $r[] = $info;
+        }
+        return $r;
+    }
     /**
      * Get the file type of a given file.
      *
@@ -1209,5 +1343,4 @@ class FileSystem
         }
         return $output;
     }
-
 }
